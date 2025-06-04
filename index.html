@@ -47,11 +47,30 @@
       gap: 10px;
       margin-top: 20px;
     }
+    .preview-item {
+      position: relative;
+      display: inline-block;
+    }
     .preview-container img {
       width: 100px;
       height: auto;
       border: 2px solid #fff;
       border-radius: 8px;
+      cursor: move;
+    }
+    .remove-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: red;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 20px;
     }
     .owner {
       font-size: 1.2rem;
@@ -86,30 +105,22 @@
   </style>
 </head>
 <body>
-  <!-- Background Music -->
   <audio id="bgMusic" autoplay loop>
     <source src="relaxing-krishna-flute-music-deep-sleep-relaxing-music-292793.mp3" type="audio/mpeg">
     Your browser does not support the audio element.
   </audio>
 
   <header>
-    <!-- Centered Logos -->
-    <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px;">
-      <img src="logo1.png" alt="Logo 1" style="height: 40px;" />
-      <img src="logo2.png" alt="Logo 2" style="height: 30px;" />
-    </div>
     <h1>Image to PDF Converter</h1>
   </header>
 
   <main>
     <p>Select images and convert them to a PDF file.</p>
     <div class="upload-section">
-      <input type="file" id="imageInput" accept="image/*" multiple />
+      <input type="file" id="imageInput" accept="image/*" multiple aria-label="Upload images" />
       <br />
-      <button onclick="convertToPDF()">Convert to PDF</button>
-
-      <!-- Instagram Info -->
-      <div class="contactus" style="margin-top: 20px;">
+      <button onclick="convertToPDF()" aria-label="Convert images to PDF">Convert to PDF & ZIP</button>
+      <div class="contactus">
         <div class="owner">Owned by Shubham Karpe</div>
         <a href="https://www.instagram.com/itz_shubham_09_/" target="_blank">
           <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram" class="instagram-logo" />
@@ -117,107 +128,140 @@
         </a>
       </div>
     </div>
-
     <div class="loader" id="loader"></div>
-
     <div class="preview-container" id="previewContainer"></div>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <script>
-    // Set volume to 60%
     const bgMusic = document.getElementById("bgMusic");
     bgMusic.volume = 0.6;
-
-    // Wait for user interaction to play music
     document.addEventListener("click", () => {
-      if (bgMusic.paused) {
-        bgMusic.play().catch(err => {
-          console.log("Autoplay blocked:", err);
-        });
-      }
+      if (bgMusic.paused) bgMusic.play().catch(() => {});
     });
 
     const imageInput = document.getElementById("imageInput");
     const previewContainer = document.getElementById("previewContainer");
     const loader = document.getElementById("loader");
 
-    imageInput.addEventListener("change", showPreview);
+    let imageFiles = [];
 
-    function showPreview() {
+    imageInput.addEventListener("change", () => {
       previewContainer.innerHTML = "";
-      const files = imageInput.files;
+      imageFiles = Array.from(imageInput.files).filter(file => {
+        if (!file.type.startsWith("image/")) {
+          alert("Unsupported file format: " + file.name);
+          return false;
+        }
+        return true;
+      });
+      renderPreviews();
+    });
 
-      for (let file of files) {
+    function renderPreviews() {
+      previewContainer.innerHTML = "";
+      imageFiles.forEach((file, index) => {
         const reader = new FileReader();
         reader.onload = function (e) {
+          const div = document.createElement("div");
+          div.className = "preview-item";
+          div.draggable = true;
+
           const img = document.createElement("img");
           img.src = e.target.result;
-          previewContainer.appendChild(img);
+          img.alt = "Uploaded image";
+          img.dataset.index = index;
+
+          const removeBtn = document.createElement("button");
+          removeBtn.className = "remove-btn";
+          removeBtn.innerHTML = "×";
+          removeBtn.onclick = () => {
+            imageFiles.splice(index, 1);
+            renderPreviews();
+          };
+
+          div.appendChild(img);
+          div.appendChild(removeBtn);
+          previewContainer.appendChild(div);
         };
         reader.readAsDataURL(file);
-      }
+      });
     }
 
     async function convertToPDF() {
-      const { jsPDF } = window.jspdf;
-      const files = imageInput.files;
-
-      if (!files.length) {
+      if (!imageFiles.length) {
         alert("Please select at least one image.");
         return;
       }
 
       loader.style.display = "block";
+      try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+        const zip = new JSZip();
 
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4"
-      });
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
+          const imgData = await readFileAsDataURL(file);
+          zip.file(file.name, file);
 
-      const pageWidth = 210;
-      const pageHeight = 297;
+          const img = new Image();
+          img.src = imgData;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const imgData = await readFileAsDataURL(file);
-        const img = new Image();
-        img.src = imgData;
+          await new Promise((resolve) => {
+            img.onload = function () {
+              const imgWidth = img.width;
+              const imgHeight = img.height;
+              const orientation = imgWidth > imgHeight ? "landscape" : "portrait";
+              const pageSize = orientation === "landscape" ? [297, 210] : [210, 297];
 
-        await new Promise((resolve) => {
-          img.onload = function () {
-            const imgWidth = img.width;
-            const imgHeight = img.height;
-            const imgRatio = imgWidth / imgHeight;
-            const pageRatio = pageWidth / pageHeight;
+              if (i > 0) pdf.addPage(pageSize, orientation);
 
-            let finalWidth, finalHeight;
+              const imgRatio = imgWidth / imgHeight;
+              const pageRatio = pageSize[0] / pageSize[1];
+              let finalWidth, finalHeight;
 
-            if (imgRatio > pageRatio) {
-              finalWidth = pageWidth;
-              finalHeight = pageWidth / imgRatio;
-            } else {
-              finalHeight = pageHeight;
-              finalWidth = pageHeight * imgRatio;
-            }
+              if (imgRatio > pageRatio) {
+                finalWidth = pageSize[0];
+                finalHeight = pageSize[0] / imgRatio;
+              } else {
+                finalHeight = pageSize[1];
+                finalWidth = pageSize[1] * imgRatio;
+              }
 
-            const x = (pageWidth - finalWidth) / 2;
-            const y = (pageHeight - finalHeight) / 2;
+              const x = (pageSize[0] - finalWidth) / 2;
+              const y = (pageSize[1] - finalHeight) / 2;
 
-            if (i > 0) pdf.addPage();
-            pdf.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
-            resolve();
-          };
-        });
+              pdf.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
+
+              pdf.setTextColor(150);
+              pdf.setFontSize(10);
+              pdf.text("Created by Shubham Karpe", pageSize[0] / 2, pageSize[1] - 10, { align: 'center' });
+
+              resolve();
+            };
+          });
+        }
+
+        const filename = prompt("Enter PDF filename:", "converted.pdf") || "converted.pdf";
+        const pdfBlob = pdf.output('blob');
+        zip.file(filename, pdfBlob);
+
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const link = document.createElement("a");
+        link.href = zipUrl;
+        link.download = "images_and_pdf.zip";
+        link.click();
+
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Something went wrong while creating the PDF/ZIP.");
+      } finally {
+        loader.style.display = "none";
       }
-
-      const filename = prompt("Enter a name for your PDF file:", "converted.pdf");
-      if (filename) {
-        pdf.save(filename.endsWith('.pdf') ? filename : filename + '.pdf');
-      }
-
-      loader.style.display = "none";
     }
 
     function readFileAsDataURL(file) {
