@@ -1,44 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Image to PDF Converter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
     body {
-      background-color: #000;
-      color: #fff;
-      font-family: 'Courier New', Courier, monospace;
+      background: linear-gradient(-45deg, #ff9a9e, #fad0c4, #a18cd1, #fbc2eb);
+      background-size: 400% 400%;
+      animation: rgbFlow 20s ease infinite;
+      font-family: 'Lato', sans-serif;
       margin: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
     }
+    @keyframes rgbFlow {
+      0% {background-position: 0% 50%;}
+      50% {background-position: 100% 50%;}
+      100% {background-position: 0% 50%;}
+    }
     header {
       text-align: center;
-      padding: 2rem;
+      padding: 2rem 1rem;
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #000;
+      margin: 0;
     }
     main {
       flex-grow: 1;
       text-align: center;
-      padding: 2rem;
+      padding: 2rem 1rem;
     }
     .upload-section {
       margin-top: 2rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      display: inline-block;
     }
     input[type="file"], button {
       margin: 10px;
-      padding: 10px;
-      background: #fff;
-      color: #000;
+      padding: 12px 20px;
+      background: #ffffff;
+      color: #333;
       border: none;
-      cursor: pointer;
-      font-family: 'Courier New', Courier, monospace;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    input[type="file"]:hover, button:hover {
+      background: #f1f1f1;
+      transform: scale(1.05);
     }
     input[type="file"] {
       background: #222;
-      color: #fff;
+      color: white;
     }
     .preview-container {
       display: flex;
@@ -49,25 +74,29 @@
     }
     .preview-container img {
       width: 100px;
-      height: auto;
       border: 2px solid #fff;
-      border-radius: 8px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     .owner {
       font-size: 1.2rem;
       margin-bottom: 1rem;
     }
     .contactus {
-      margin-top: 1rem;
+      margin-top: 2rem;
     }
     .instagram-logo {
-      width: 20px;
+      width: 22px;
       vertical-align: middle;
       margin-right: 8px;
     }
     a {
-      color: #ccc;
+      color: #000;
       text-decoration: none;
+      transition: color 0.3s;
+    }
+    a:hover {
+      color: #000;
     }
     .loader {
       display: none;
@@ -86,143 +115,117 @@
   </style>
 </head>
 <body>
-  <!-- Background Music -->
-  <audio id="bgMusic" autoplay loop>
-    <source src="relaxing-krishna-flute-music-deep-sleep-relaxing-music-292793.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
-  </audio>
+<audio autoplay id="bgMusic" loop>
+  <source src="relaxing-krishna-flute-music-deep-sleep-relaxing-music-292793.mp3" type="audio/mpeg"/>
+</audio>
 
-  <header>
-    <h1>Image to PDF Converter</h1>
-  </header>
+<header>
+  <img src="https://iili.io/FK3bcx9.png" width="350" height="120">
+  <h1>Image to PDF Converter</h1>
+</header>
 
-  <main>
-    <p>Select images and convert them to a PDF file.</p>
-    <div class="upload-section">
-      <input type="file" id="imageInput" accept="image/*" multiple />
-      <br />
-      <button onclick="convertToPDF()">Convert to PDF</button>
-
-      <!-- Instagram Info -->
-      <div class="contactus" style="margin-top: 20px;">
-        <div class="owner">Owned by Shubham Karpe</div>
-        <a href="https://www.instagram.com/_itz_shubham_09__/" target="_blank">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram" class="instagram-logo" />
-          @_itz_shubham_09__
-        </a>
-      </div>
+<main>
+  <p>Select images and convert them to a PDF file.</p>
+  <div class="upload-section">
+    <input type="file" id="imageInput" accept="image/*" multiple/>
+    <br/>
+    <button onclick="convertToPDF()">Convert to PDF</button>
+    <div class="contactus">
+      <div class="owner">Owned by Shubham Karpe</div>
+      <a href="https://www.instagram.com/sparknest.tools/" target="_blank">
+        <img class="instagram-logo" src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png"/>
+        sparknest.tools
+      </a><br/>
+      <a href="https://www.instagram.com/itz_shubham_09_/" target="_blank">
+        <img class="instagram-logo" src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png"/>
+        @itz_shubham_09_
+      </a>
     </div>
+  </div>
+  <div class="loader" id="loader"></div>
+  <div class="preview-container" id="previewContainer"></div>
+</main>
 
-    <div class="loader" id="loader"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  const bgMusic = document.getElementById("bgMusic");
+  bgMusic.volume = 0.6;
 
-    <div class="preview-container" id="previewContainer"></div>
-  </main>
+  const imageInput = document.getElementById("imageInput");
+  const previewContainer = document.getElementById("previewContainer");
+  const loader = document.getElementById("loader");
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
-    // Set volume to 60%
-    const bgMusic = document.getElementById("bgMusic");
-    bgMusic.volume = 0.6;
+  imageInput.addEventListener("change", showPreview);
 
-    // Wait for user interaction to play music
-    document.addEventListener("click", () => {
-      if (bgMusic.paused) {
-        bgMusic.play().catch(err => {
-          console.log("Autoplay blocked:", err);
-        });
-      }
-    });
+  function showPreview() {
+    previewContainer.innerHTML = "";
+    const files = imageInput.files;
+    for (let file of files) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = document.createElement("img");
+        img.src = e.target.result;
+        previewContainer.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 
-    const imageInput = document.getElementById("imageInput");
-    const previewContainer = document.getElementById("previewContainer");
-    const loader = document.getElementById("loader");
+  async function convertToPDF() {
+    const { jsPDF } = window.jspdf;
+    const files = imageInput.files;
+    if (!files.length) {
+      alert("Please select at least one image.");
+      return;
+    }
 
-    imageInput.addEventListener("change", showPreview);
+    loader.style.display = "block";
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = 210, pageHeight = 297;
 
-    function showPreview() {
-      previewContainer.innerHTML = "";
-      const files = imageInput.files;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const imgData = await readFileAsDataURL(file);
+      const img = new Image();
+      img.src = imgData;
 
-      for (let file of files) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const img = document.createElement("img");
-          img.src = e.target.result;
-          previewContainer.appendChild(img);
+      await new Promise((resolve) => {
+        img.onload = function () {
+          const imgRatio = img.width / img.height;
+          const pageRatio = pageWidth / pageHeight;
+          let finalWidth, finalHeight;
+          if (imgRatio > pageRatio) {
+            finalWidth = pageWidth;
+            finalHeight = pageWidth / imgRatio;
+          } else {
+            finalHeight = pageHeight;
+            finalWidth = pageHeight * imgRatio;
+          }
+          const x = (pageWidth - finalWidth) / 2;
+          const y = (pageHeight - finalHeight) / 2;
+          if (i > 0) pdf.addPage();
+          pdf.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
+          resolve();
         };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    async function convertToPDF() {
-      const { jsPDF } = window.jspdf;
-      const files = imageInput.files;
-
-      if (!files.length) {
-        alert("Please select at least one image.");
-        return;
-      }
-
-      loader.style.display = "block";
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4"
-      });
-
-      const pageWidth = 210;
-      const pageHeight = 297;
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const imgData = await readFileAsDataURL(file);
-        const img = new Image();
-        img.src = imgData;
-
-        await new Promise((resolve) => {
-          img.onload = function () {
-            const imgWidth = img.width;
-            const imgHeight = img.height;
-            const imgRatio = imgWidth / imgHeight;
-            const pageRatio = pageWidth / pageHeight;
-
-            let finalWidth, finalHeight;
-
-            if (imgRatio > pageRatio) {
-              finalWidth = pageWidth;
-              finalHeight = pageWidth / imgRatio;
-            } else {
-              finalHeight = pageHeight;
-              finalWidth = pageHeight * imgRatio;
-            }
-
-            const x = (pageWidth - finalWidth) / 2;
-            const y = (pageHeight - finalHeight) / 2;
-
-            if (i > 0) pdf.addPage();
-            pdf.addImage(img, 'JPEG', x, y, finalWidth, finalHeight);
-            resolve();
-          };
-        });
-      }
-
-      const filename = prompt("Enter a name for your PDF file:", "converted.pdf");
-      if (filename) {
-        pdf.save(filename.endsWith('.pdf') ? filename : filename + '.pdf');
-      }
-
-      loader.style.display = "none";
-    }
-
-    function readFileAsDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
       });
     }
-  </script>
+
+    const filename = prompt("Enter a name for your PDF file:", "converted.pdf");
+    if (filename) {
+      pdf.save(filename.endsWith('.pdf') ? filename : filename + '.pdf');
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+    }
+    loader.style.display = "none";
+  }
+
+  function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+</script>
 </body>
 </html>
